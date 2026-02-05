@@ -8,205 +8,18 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, LSP
 
 Spring Boot REST API 프로젝트의 공통 개발 규칙입니다.
 
-## 빌드 설정 (Build Configuration)
+---
 
-### 프로젝트 기본 정보
+## 1. 핵심 공통 규칙
 
-| 항목 | 값 |
-|------|------|
-| Spring Boot | 3.4.1 |
-| Java | 21 |
-| Gradle | Kotlin DSL |
-| DB | MySQL 8.0 |
-| 캐시/토큰 | Redis 7 |
-
-### build.gradle.kts
-
-```kotlin
-plugins {
-    java
-    id("org.springframework.boot") version "3.4.1"
-    id("io.spring.dependency-management") version "1.1.7"
-}
-
-// group, version, description은 프로젝트에 맞게 설정
-
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
-    }
-}
-
-configurations {
-    compileOnly {
-        extendsFrom(configurations.annotationProcessor.get())
-    }
-}
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    // Spring Boot Starters
-    implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-security")
-    implementation("org.springframework.boot:spring-boot-starter-validation")
-    implementation("org.springframework.boot:spring-boot-starter-data-redis")
-
-    // Swagger (SpringDoc)
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.0")
-
-    // JWT
-    implementation("io.jsonwebtoken:jjwt-api:0.12.3")
-    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.3")
-    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
-
-    // Database
-    runtimeOnly("com.mysql:mysql-connector-j")
-    runtimeOnly("com.h2database:h2")            // 테스트용
-
-    // Lombok
-    compileOnly("org.projectlombok:lombok")
-    annotationProcessor("org.projectlombok:lombok")
-
-    // Test
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.springframework.security:spring-security-test")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-}
-
-tasks.withType<Test> {
-    useJUnitPlatform()
-}
-
-tasks.jar {
-    enabled = false
-}
-```
-
-### 의존성 요약
-
-| 라이브러리 | 버전 | 용도 |
-|-----------|------|------|
-| springdoc-openapi | 2.8.0 | Swagger UI |
-| jjwt | 0.12.3 | JWT 토큰 |
-| mysql-connector-j | (Spring 관리) | MySQL 드라이버 |
-| h2 | (Spring 관리) | 테스트 DB |
-| spring-data-redis | (Spring 관리) | Redis (토큰 관리) |
+1. **의존성 주입:** `@RequiredArgsConstructor` 생성자 주입 사용. `@Autowired` 금지.
+2. **불변성:** DTO는 Java `record` 사용.
+3. **Lombok:** `@Getter` 사용. 엔티티 `@Setter` 금지 → 비즈니스 메서드로 상태 변경.
+4. **주석:** Public 메서드(Controller, Service) 위에 한 줄 기능 설명 작성.
 
 ---
 
-## 인프라 (Docker)
-
-MySQL과 Redis는 Docker Compose로 실행합니다.
-
-### docker-compose.yml
-
-```yaml
-services:
-  mysql:
-    image: mysql:8.0
-    container_name: ${프로젝트명}-mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: ${DB명}
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql-data:/var/lib/mysql
-
-  redis:
-    image: redis:7-alpine
-    container_name: ${프로젝트명}-redis
-    ports:
-      - "6379:6379"
-
-volumes:
-  mysql-data:
-```
-
-```bash
-# 시작
-docker-compose up -d
-
-# 중지
-docker-compose down
-```
-
----
-
-## 데이터베이스 설정
-
-### 운영/개발용 (src/main/resources/application.yaml)
-
-```yaml
-spring:
-  application:
-    name: ${프로젝트명}
-  datasource:
-    url: jdbc:mysql://localhost:3306/${DB명}
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:root}
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: false
-    open-in-view: false
-  data:
-    redis:
-      host: ${SPRING_DATA_REDIS_HOST:localhost}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
-
-jwt:
-  secret: ${JWT_SECRET:your-256-bit-secret-key-here-must-be-at-least-32-characters}
-  access-token-expiration: 3600000
-  refresh-token-expiration: 604800000
-```
-
-### 테스트용 (src/test/resources/application.yaml)
-
-```yaml
-spring:
-  application:
-    name: ${프로젝트명}
-  datasource:
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    show-sql: true
-    open-in-view: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
-  data:
-    redis:
-      host: localhost
-      port: 6379
-
-jwt:
-  secret: test-secret-key-for-testing-purposes-must-be-at-least-32-characters-long
-  access-token-expiration: 3600000
-  refresh-token-expiration: 604800000
-```
-
-### H2 예약어 주의
-
-H2에서 `hour`, `year`, `month`, `day`, `time` 등은 예약어입니다. 엔티티 컬럼명으로 사용 시 반드시 `@Column(name = "crowd_hour")` 등으로 변경하세요.
-
----
-
-## 패키지 구조 (도메인형 - 필수!)
+## 2. 패키지 구조 (도메인형 - 필수!)
 
 ```
 {base-package}
@@ -253,16 +66,7 @@ H2에서 `hour`, `year`, `month`, `day`, `time` 등은 예약어입니다. 엔�
 
 ---
 
-## 핵심 공통 규칙
-
-1. **의존성 주입:** `@RequiredArgsConstructor` 생성자 주입 사용. `@Autowired` 금지.
-2. **불변성:** DTO는 Java `record` 사용.
-3. **Lombok:** `@Getter` 사용. 엔티티 `@Setter` 금지 → 비즈니스 메서드로 상태 변경.
-4. **주석:** Public 메서드(Controller, Service) 위에 한 줄 기능 설명 작성.
-
----
-
-## Global 모듈
+## 3. Global 모듈
 
 ### BaseEntity
 
@@ -354,7 +158,7 @@ public PostResponse getPost(Long id) {
 
 ---
 
-## 도메인 계층
+## 4. 도메인 계층
 
 ### 엔티티 (Entity)
 
@@ -446,7 +250,7 @@ public class PostService {
 
 ---
 
-## DTO 전략
+## 5. DTO 전략
 
 - Java `record` 사용 (class 금지)
 - Request: `toEntity()` 메서드 필수
@@ -496,7 +300,7 @@ public record PostResponse(
 
 ---
 
-## 컨트롤러 (Controller)
+## 6. 컨트롤러 (Controller)
 
 - `@RestController` 사용
 - 클래스 레벨 `@RequestMapping` 금지 → 메서드에 전체 경로
@@ -543,7 +347,28 @@ public class PostController {
 
 ---
 
-## Swagger 문서화
+## 7. API 엔드포인트 설계 패턴
+
+### URL 규칙
+
+- 접두사: `/api/`
+- 리소스명: 복수형 소문자 (`/api/posts`, `/api/users`)
+- 하위 리소스: `/api/{부모}/{부모Id}/{자식}` (예: `/api/posts/{postId}/comments`)
+
+### CRUD 기본 패턴
+
+| 메서드 | 엔드포인트 | 설명 | 상태 코드 |
+|--------|-----------|------|-----------|
+| POST | `/api/{도메인}` | 생성 | 201 |
+| GET | `/api/{도메인}` | 목록 조회 | 200 |
+| GET | `/api/{도메인}/{id}` | 상세 조회 | 200 |
+| PUT | `/api/{도메인}/{id}` | 수정 | 200 |
+| DELETE | `/api/{도메인}/{id}` | 삭제 | 200 |
+| PATCH | `/api/{도메인}/{id}/{필드}` | 부분 수정 | 200 |
+
+---
+
+## 8. Swagger 문서화
 
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - 인증 필요 API: `@Operation(security = @SecurityRequirement(name = "bearerAuth"))`
@@ -586,7 +411,7 @@ public class SpringDoc {
 
 ---
 
-## 인증/인가 (JWT + Redis)
+## 9. 인증/인가 (JWT + Redis)
 
 ### 개요
 
@@ -699,28 +524,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 ---
 
-## API 엔드포인트 설계 패턴
-
-### URL 규칙
-
-- 접두사: `/api/`
-- 리소스명: 복수형 소문자 (`/api/posts`, `/api/users`)
-- 하위 리소스: `/api/{부모}/{부모Id}/{자식}` (예: `/api/posts/{postId}/comments`)
-
-### CRUD 기본 패턴
-
-| 메서드 | 엔드포인트 | 설명 | 상태 코드 |
-|--------|-----------|------|-----------|
-| POST | `/api/{도메인}` | 생성 | 201 |
-| GET | `/api/{도메인}` | 목록 조회 | 200 |
-| GET | `/api/{도메인}/{id}` | 상세 조회 | 200 |
-| PUT | `/api/{도메인}/{id}` | 수정 | 200 |
-| DELETE | `/api/{도메인}/{id}` | 삭제 | 200 |
-| PATCH | `/api/{도메인}/{id}/{필드}` | 부분 수정 | 200 |
-
----
-
-## 테스트 코드
+## 10. 테스트 코드
 
 새 도메인 생성 시 반드시 테스트도 함께 생성합니다.
 
@@ -851,7 +655,201 @@ class PostControllerTest {
 
 ---
 
-## 협업 규칙
+## 11. 빌드 설정 (Build Configuration)
+
+### 프로젝트 기본 정보
+
+| 항목 | 값 |
+|------|------|
+| Spring Boot | 3.4.1 |
+| Java | 21 |
+| Gradle | Kotlin DSL |
+| DB | MySQL 8.0 |
+| 캐시/토큰 | Redis 7 |
+
+### build.gradle.kts
+
+```kotlin
+plugins {
+    java
+    id("org.springframework.boot") version "3.4.1"
+    id("io.spring.dependency-management") version "1.1.7"
+}
+
+// group, version, description은 프로젝트에 맞게 설정
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom(configurations.annotationProcessor.get())
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Spring Boot Starters
+    implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
+
+    // Swagger (SpringDoc)
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.0")
+
+    // JWT
+    implementation("io.jsonwebtoken:jjwt-api:0.12.3")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.3")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
+
+    // Database
+    runtimeOnly("com.mysql:mysql-connector-j")
+    runtimeOnly("com.h2database:h2")            // 테스트용
+
+    // Lombok
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+
+    // Test
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.security:spring-security-test")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
+}
+
+tasks.jar {
+    enabled = false
+}
+```
+
+### 의존성 요약
+
+| 라이브러리 | 버전 | 용도 |
+|-----------|------|------|
+| springdoc-openapi | 2.8.0 | Swagger UI |
+| jjwt | 0.12.3 | JWT 토큰 |
+| mysql-connector-j | (Spring 관리) | MySQL 드라이버 |
+| h2 | (Spring 관리) | 테스트 DB |
+| spring-data-redis | (Spring 관리) | Redis (토큰 관리) |
+
+---
+
+## 12. 인프라 + DB 설정
+
+### Docker Compose
+
+MySQL과 Redis는 Docker Compose로 실행합니다.
+
+```yaml
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: ${프로젝트명}-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ${DB명}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  redis:
+    image: redis:7-alpine
+    container_name: ${프로젝트명}-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  mysql-data:
+```
+
+```bash
+# 시작
+docker-compose up -d
+
+# 중지
+docker-compose down
+```
+
+### 운영/개발용 (src/main/resources/application.yaml)
+
+```yaml
+spring:
+  application:
+    name: ${프로젝트명}
+  datasource:
+    url: jdbc:mysql://localhost:3306/${DB명}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+
+jwt:
+  secret: ${JWT_SECRET:your-256-bit-secret-key-here-must-be-at-least-32-characters}
+  access-token-expiration: 3600000
+  refresh-token-expiration: 604800000
+```
+
+### 테스트용 (src/test/resources/application.yaml)
+
+```yaml
+spring:
+  application:
+    name: ${프로젝트명}
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+jwt:
+  secret: test-secret-key-for-testing-purposes-must-be-at-least-32-characters-long
+  access-token-expiration: 3600000
+  refresh-token-expiration: 604800000
+```
+
+### H2 예약어 주의
+
+H2에서 `hour`, `year`, `month`, `day`, `time` 등은 예약어입니다. 엔티티 컬럼명으로 사용 시 반드시 `@Column(name = "crowd_hour")` 등으로 변경하세요.
+
+---
+
+## 13. 협업 규칙
 
 1. **범위 확인:** 작업 시작 전 담당 도메인 파악.
 2. **격리:** 담당 도메인 외부 패키지 수정 금지.
