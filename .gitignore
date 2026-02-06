@@ -1,37 +1,142 @@
-HELP.md
-.gradle
-build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
+# ================================
+# AI Trip Monorepo .gitignore
+# ================================
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
+# ================================
+# Global
+# ================================
+.env
+.env.local
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
 
-### IntelliJ IDEA ###
-.idea
+# ================================
+# Backend (Spring Boot / Gradle)
+# ================================
+backend/.gradle/
+backend/build/
+backend/!gradle/wrapper/gradle-wrapper.jar
+backend/!**/src/main/**/build/
+backend/!**/src/test/**/build/
+
+# STS
+backend/.apt_generated
+backend/.classpath
+backend/.factorypath
+backend/.project
+backend/.settings
+backend/.springBeans
+backend/.sts4-cache
+backend/bin/
+backend/!**/src/main/**/bin/
+backend/!**/src/test/**/bin/
+
+# IntelliJ IDEA
+.idea/
 *.iws
 *.iml
 *.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
+backend/out/
+backend/!**/src/main/**/out/
+backend/!**/src/test/**/out/
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
+# NetBeans
+backend/nbproject/private/
+backend/nbbuild/
+backend/dist/
+backend/nbdist/
+backend/.nb-gradle/
 
-### VS Code ###
+# ================================
+# Frontend (Flutter / Dart)
+# ================================
+frontend/.dart_tool/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.packages
+frontend/.pub-cache/
+frontend/.pub/
+frontend/build/
+frontend/.fvm/
+
+# Generated files
+frontend/*.g.dart
+frontend/*.freezed.dart
+frontend/*.mocks.dart
+frontend/lib/generated/
+
+# Flutter platform folders (optional - can be regenerated)
+# frontend/android/
+# frontend/ios/
+# frontend/web/
+# frontend/linux/
+# frontend/macos/
+# frontend/windows/
+
+# Android
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/android/*.iml
+frontend/android/.idea/
+frontend/android/key.properties
+frontend/android/app/release/
+
+# iOS
+frontend/ios/Pods/
+frontend/ios/.symlinks/
+frontend/ios/Flutter/Flutter.framework
+frontend/ios/Flutter/Flutter.podspec
+frontend/ios/Flutter/Generated.xcconfig
+frontend/ios/Flutter/ephemeral/
+frontend/ios/Flutter/app.flx
+frontend/ios/Flutter/app.zip
+frontend/ios/Flutter/flutter_assets/
+frontend/ios/ServiceDefinitions.json
+
+# Env file
+frontend/.env
+
+# ================================
+# AI (Python / FastAPI)
+# ================================
+ai/__pycache__/
+ai/**/__pycache__/
+ai/*.py[cod]
+ai/**/*.py[cod]
+ai/*$py.class
+ai/**/*$py.class
+ai/.Python
+ai/env/
+ai/venv/
+ai/.venv/
+ai/ENV/
+ai/pip-log.txt
+ai/pip-delete-this-directory.txt
+ai/.mypy_cache/
+ai/.pytest_cache/
+ai/.coverage
+ai/htmlcov/
+ai/*.egg-info/
+ai/dist/
+ai/build/
+ai/.eggs/
+ai/*.egg
+
+# Jupyter
+ai/.ipynb_checkpoints/
+
+# ================================
+# IDE & Editor
+# ================================
 .vscode/
+*.swp
+*.swo
+*~
+
+# ================================
+# Docker
+# ================================
+*.log
+docker-compose.override.yml
