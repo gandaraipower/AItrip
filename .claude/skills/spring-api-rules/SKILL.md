@@ -37,6 +37,12 @@ Spring Boot REST API 프로젝트의 공통 개발 규칙입니다.
 │   │   ├── ApiResponse.java         # 공통 응답 래퍼
 │   │   ├── ErrorCode.java           # 도메인별 에러 코드
 │   │   └── ResponseCode.java        # HTTP 응답 코드
+│   ├── client/                      # 외부 서버 통신 (AI 서버 등)
+│   │   ├── AiClientConfig.java      # WebClient 빈 설정
+│   │   ├── AiClient.java            # AI 서버 통신 클라이언트
+│   │   └── dto/
+│   │       ├── AiScheduleRequest.java
+│   │       └── AiScheduleResponse.java
 │   └── security/
 │       ├── jwt/
 │       │   ├── JwtTokenProvider.java
@@ -849,7 +855,217 @@ H2에서 `hour`, `year`, `month`, `day`, `time` 등은 예약어입니다. 엔�
 
 ---
 
-## 13. 협업 규칙
+## 13. 외부 서버 통신 (AI 서버 연동)
+
+AI 서버(FastAPI/Node.js)와의 HTTP 통신은 `global/client/` 패키지에서 관리합니다.
+
+### 패키지 구조
+
+```
+global/client/
+├── AiClientConfig.java       # WebClient 빈 설정
+├── AiClient.java             # AI 서버 통신 클라이언트
+└── dto/
+    ├── AiScheduleRequest.java
+    └── AiScheduleResponse.java
+```
+
+### 의존성 추가 (build.gradle.kts)
+
+```kotlin
+dependencies {
+    // WebClient (Spring WebFlux)
+    implementation("org.springframework.boot:spring-boot-starter-webflux")
+}
+```
+
+### WebClient 설정
+
+```java
+@Configuration
+public class AiClientConfig {
+
+    @Value("${ai.server.url}")
+    private String aiServerUrl;
+
+    @Bean
+    public WebClient aiWebClient() {
+        return WebClient.builder()
+                .baseUrl(aiServerUrl)
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .build();
+    }
+}
+```
+
+### application.yaml 설정
+
+```yaml
+ai:
+  server:
+    url: ${AI_SERVER_URL:http://localhost:8000}
+    timeout: 30000  # 30초
+```
+
+### AI Client 구현
+
+```java
+@Component
+@RequiredArgsConstructor
+public class AiClient {
+
+    private final WebClient aiWebClient;
+
+    // AI 서버에 일정 생성 요청
+    public AiScheduleResponse requestSchedule(AiScheduleRequest request) {
+        return aiWebClient.post()
+                .uri("/api/schedule/generate")
+                .bodyValue(request)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, response ->
+                        Mono.error(new BusinessException(ErrorCode.AI_SERVER_ERROR)))
+                .bodyToMono(AiScheduleResponse.class)
+                .timeout(Duration.ofSeconds(30))
+                .block();
+    }
+
+    // AI 서버 헬스체크
+    public boolean healthCheck() {
+        try {
+            aiWebClient.get()
+                    .uri("/health")
+                    .retrieve()
+                    .bodyToMono(Void.class)
+                    .timeout(Duration.ofSeconds(5))
+                    .block();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+}
+```
+
+### AI 통신용 DTO
+
+```java
+// 요청 DTO
+public record AiScheduleRequest(
+        String region,
+        LocalDate startDate,
+        LocalDate endDate,
+        String tripStyle,
+        List<String> preferences
+) {}
+
+// 응답 DTO
+public record AiScheduleResponse(
+        boolean success,
+        String message,
+        List<AiPlaceRecommendation> recommendations
+) {}
+
+public record AiPlaceRecommendation(
+        String placeName,
+        String category,
+        Integer visitOrder,
+        Integer estimatedMinutes,
+        String reason
+) {}
+```
+
+### 서비스에서 사용
+
+```java
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class TripService {
+
+    private final AiClient aiClient;
+    private final TripRepository tripRepository;
+
+    // AI 기반 일정 생성
+    @Transactional
+    public TripResponse createTripWithAi(Long userId, TripRequest request) {
+        // 1. AI 서버에 일정 추천 요청
+        AiScheduleRequest aiRequest = new AiScheduleRequest(
+                request.region(),
+                request.startDate(),
+                request.endDate(),
+                request.tripStyle().name(),
+                request.preferences()
+        );
+        AiScheduleResponse aiResponse = aiClient.requestSchedule(aiRequest);
+
+        // 2. AI 응답으로 Trip 엔티티 생성
+        // ...
+    }
+}
+```
+
+### ErrorCode 추가
+
+```java
+public enum ErrorCode {
+    // 기존 에러 코드...
+
+    // AI 서버 (AI)
+    AI_SERVER_ERROR("AI001", HttpStatus.SERVICE_UNAVAILABLE, "AI 서버 연결에 실패했습니다."),
+    AI_TIMEOUT("AI002", HttpStatus.GATEWAY_TIMEOUT, "AI 서버 응답 시간이 초과되었습니다."),
+    AI_INVALID_RESPONSE("AI003", HttpStatus.BAD_GATEWAY, "AI 서버 응답을 처리할 수 없습니다.");
+}
+```
+
+### 주의사항
+
+1. **타임아웃 설정 필수**: AI 서버 응답이 느릴 수 있으므로 적절한 타임아웃 설정
+2. **에러 핸들링**: AI 서버 장애 시 사용자에게 명확한 에러 메시지 반환
+3. **비동기 처리 고려**: 긴 작업은 `@Async` 또는 메시지 큐 사용 검토
+4. **재시도 정책**: 일시적 장애 대비 재시도 로직 추가 가능 (Resilience4j 등)
+
+---
+
+## 14. 개발 환경 Mock 데이터
+
+팀원 간 동일한 테스트 데이터로 개발하기 위해 `data-dev.sql`을 사용합니다.
+
+### 파일 위치
+
+```
+src/main/resources/
+├── application.yaml        # 기본 설정
+├── application-dev.yaml    # 개발 환경 (Mock 데이터 로드)
+└── data-dev.sql            # Mock 데이터
+```
+
+### 사용 방법
+
+```bash
+# dev 프로파일로 실행 (Mock 데이터 포함)
+./gradlew bootRun --args='--spring.profiles.active=dev'
+
+# 기본 실행 (Mock 데이터 없음)
+./gradlew bootRun
+```
+
+### 테스트 계정
+
+| 이메일 | 비밀번호 | 역할 |
+|--------|----------|------|
+| admin@aitrip.com | Test1234! | ROLE_ADMIN |
+| user1@test.com | Test1234! | ROLE_USER |
+| user2@test.com | Test1234! | ROLE_USER |
+
+### Mock 데이터 추가 규칙
+
+1. `data-dev.sql`에 INSERT 문 추가
+2. `ON DUPLICATE KEY UPDATE` 사용하여 중복 방지
+3. PR로 팀원들과 공유
+
+---
+
+## 15. 협업 규칙
 
 1. **범위 확인:** 작업 시작 전 담당 도메인 파악.
 2. **격리:** 담당 도메인 외부 패키지 수정 금지.

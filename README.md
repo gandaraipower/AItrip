@@ -67,7 +67,11 @@ uvicorn app.main:app --reload --port 8000
 
 ## 개발 가이드
 
-각 서비스별 상세 가이드는 해당 폴더의 README.md를 참고하세요.
+### [DEVELOPMENT.md](./DEVELOPMENT.md) - 필독!
+
+로컬 개발 환경 설정, Mock 데이터 사용법, 테스트 계정 등 팀원 공통 가이드입니다.
+
+### 서비스별 가이드
 
 - [Backend README](./backend/README.md)
 - [Frontend README](./frontend/README.md)
