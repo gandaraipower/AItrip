@@ -54,6 +54,21 @@ services:
     networks:
       - aitrip-network
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aitrip-frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:8080
+    depends_on:
+      - backend
+    networks:
+      - aitrip-network
+
 networks:
   aitrip-network:
     driver: bridge

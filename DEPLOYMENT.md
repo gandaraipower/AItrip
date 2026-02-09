@@ -25,15 +25,16 @@ AWS EC2 + RDS를 활용한 Docker 기반 배포 가이드입니다.
                     │                                          │
 ┌──────────┐        │  ┌──────────────────────────────────┐   │
 │  Client  │───────────▶│           EC2 Instance            │   │
-└──────────┘        │  │  ┌─────────┐  ┌─────────┐        │   │
-                    │  │  │ Backend │  │   AI    │        │   │
-                    │  │  │  :8080  │  │  :8000  │        │   │
-                    │  │  └────┬────┘  └─────────┘        │   │
-                    │  │       │                           │   │
-                    │  │  ┌────▼────┐                      │   │
-                    │  │  │  Redis  │                      │   │
-                    │  │  │  :6379  │                      │   │
-                    │  │  └─────────┘                      │   │
+└──────────┘        │  │                                    │   │
+                    │  │  ┌──────────┐  ┌─────────────────┐ │   │
+                    │  │  │ Frontend │  │     Backend     │ │   │
+                    │  │  │  :3000   │─▶│      :8080      │ │   │
+                    │  │  └──────────┘  └────────┬────────┘ │   │
+                    │  │                         │          │   │
+                    │  │  ┌──────────┐  ┌────────▼────────┐ │   │
+                    │  │  │    AI    │  │      Redis      │ │   │
+                    │  │  │  :8000   │  │      :6379      │ │   │
+                    │  │  └──────────┘  └─────────────────┘ │   │
                     │  └──────────────────────────────────┘   │
                     │              │                           │
                     │              ▼                           │
@@ -52,6 +53,7 @@ AWS EC2 + RDS를 활용한 Docker 기반 배포 가이드입니다.
 | Redis | 컨테이너 | 컨테이너 | 세션 캐시용, 손실 허용 |
 | Backend | 컨테이너 | 컨테이너 | 동일 |
 | AI | 컨테이너 | 컨테이너 | 동일 |
+| Frontend | 컨테이너 | 컨테이너 | Next.js SSR |
 
 ---
 
@@ -129,6 +131,7 @@ aitrip-db.xxxxxxxxxxxx.ap-northeast-2.rds.amazonaws.com
 | SSH | 22 | 내 IP | 서버 접속 |
 | HTTP | 80 | 0.0.0.0/0 | 웹 서비스 |
 | HTTPS | 443 | 0.0.0.0/0 | 웹 서비스 (SSL) |
+| 사용자 지정 TCP | 3000 | 0.0.0.0/0 | Frontend (Next.js) |
 | 사용자 지정 TCP | 8080 | 0.0.0.0/0 | Backend API |
 | 사용자 지정 TCP | 8000 | 0.0.0.0/0 | AI API |
 
@@ -235,6 +238,21 @@ services:
     networks:
       - aitrip-network
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aitrip-frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:8080
+    depends_on:
+      - backend
+    networks:
+      - aitrip-network
+
 networks:
   aitrip-network:
     driver: bridge
@@ -306,6 +324,9 @@ docker-compose -f docker-compose.prod.yml ps
 ### Step 4: 동작 확인
 
 ```bash
+# Frontend 접속 확인
+curl http://localhost:3000
+
 # Backend 헬스체크
 curl http://localhost:8080/actuator/health
 
