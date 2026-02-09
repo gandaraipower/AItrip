@@ -5,18 +5,9 @@
 # 테스트 계정: user1@test.com / Test1234!
 
 spring:
-  datasource:
-    url: jdbc:h2:mem:aitrip_dev;MODE=MySQL
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: create
     show-sql: true
     properties:
       hibernate:
