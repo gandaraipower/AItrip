@@ -1,0 +1,59 @@
+# 운영 환경용 Docker Compose
+# EC2에서 실행: docker-compose -f docker-compose.prod.yml up -d --build
+#
+# 필수: .env 파일 생성 필요 (DEPLOYMENT.md 참조)
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: aitrip-redis
+    restart: always
+    networks:
+      - aitrip-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aitrip-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mysql://${DB_HOST}:3306/${DB_NAME}?useSSL=true&requireSSL=true&serverTimezone=UTC
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - aitrip-network
+
+  ai:
+    build:
+      context: ./ai
+      dockerfile: Dockerfile
+    container_name: aitrip-ai
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      BACKEND_API_URL: http://backend:8080
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    depends_on:
+      - backend
+    networks:
+      - aitrip-network
+
+networks:
+  aitrip-network:
+    driver: bridge

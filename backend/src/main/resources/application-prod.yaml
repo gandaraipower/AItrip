@@ -1,5 +1,10 @@
 # 운영 환경 설정
-# EC2에서 실행: SPRING_PROFILES_ACTIVE=prod docker-compose up -d
+# EC2에서 실행: docker-compose -f docker-compose.prod.yml up -d
+#
+# 필수 환경변수:
+#   - SPRING_DATASOURCE_URL: RDS 연결 URL
+#   - DB_USERNAME, DB_PASSWORD: RDS 인증 정보
+#   - JWT_SECRET: JWT 서명 키 (256비트 이상)
 
 spring:
   datasource:
@@ -8,3 +13,11 @@ spring:
     hibernate:
       ddl-auto: validate
     show-sql: false
+    open-in-view: false
+
+# 운영 환경 로깅
+logging:
+  level:
+    root: INFO
+    com.aitrip: INFO
+    org.hibernate.SQL: WARN
