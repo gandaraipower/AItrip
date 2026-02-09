@@ -946,27 +946,25 @@ jwt:
 
 H2에서 `hour`, `year`, `month`, `day`, `time` 등은 예약어입니다. 엔티티 컬럼명으로 사용 시 반드시 `@Column(name = "crowd_hour")` 등으로 변경하세요.
 
-### Docker Compose 환경 분기
+### Docker Compose 파일 분리
 
-docker-compose.yml에서 환경변수로 프로파일을 분기합니다.
+로컬과 운영 환경은 별도의 Docker Compose 파일을 사용합니다.
 
-```yaml
-backend:
-  environment:
-    SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}  # 기본값 dev
-```
+| 파일 | 환경 | MySQL | 용도 |
+|------|------|-------|------|
+| `docker-compose.yml` | 로컬 | 컨테이너 | 개발용 (MySQL + Redis 포함) |
+| `docker-compose.prod.yml` | EC2 | RDS | 운영용 (Redis만 포함) |
 
 **로컬 실행:**
 ```bash
 docker-compose up -d
-# 환경변수 없음 → 기본값 dev 적용
+# MySQL + Redis + Backend + AI + Frontend 전부 실행
 ```
 
 **EC2 실행:**
 ```bash
-# .env 파일로 환경변수 설정
-docker-compose up -d
-# .env 읽어서 prod 적용
+docker-compose -f docker-compose.prod.yml up -d
+# Redis + Backend + AI + Frontend 실행 (MySQL은 RDS 사용)
 ```
 
 ### EC2 배포 설정
@@ -976,14 +974,16 @@ EC2에 `.env` 파일을 생성하여 운영 환경변수를 관리합니다.
 ```bash
 # EC2 서버에서 최초 1회 설정
 cat > .env << 'EOF'
-SPRING_PROFILES_ACTIVE=prod
-JWT_SECRET=운영용-32자이상-시크릿키-여기에-실제값
-DB_USERNAME=root
+DB_HOST=aitrip-db.xxxx.ap-northeast-2.rds.amazonaws.com
+DB_NAME=aitrip
+DB_USERNAME=admin
 DB_PASSWORD=운영DB비밀번호
+JWT_SECRET=운영용-32자이상-시크릿키-여기에-실제값
+OPENAI_API_KEY=sk-xxxx
 EOF
 
-# 이후 배포
-docker-compose up -d
+# 배포
+docker-compose -f docker-compose.prod.yml up -d --build
 ```
 
 **주의:** `.env` 파일은 민감한 정보를 포함하므로 **Git에 절대 커밋하지 않습니다.**

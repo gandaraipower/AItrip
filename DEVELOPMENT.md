@@ -24,7 +24,7 @@
 | Docker Desktop | 최신 | 필수 (모든 팀원) |
 | Java 21 | 21+ | Backend 개발 시 |
 | Python | 3.11+ | AI 개발 시 |
-| Flutter SDK | 3.5+ | Frontend 개발 시 |
+| Node.js | 20+ | Frontend 개발 시 |
 
 ### Step 1: 저장소 클론
 
@@ -72,11 +72,11 @@ uvicorn app.main:app --reload --port 8000
 ```
 - API 문서: http://localhost:8000/docs
 
-**Frontend (Flutter):**
+**Frontend (Next.js):**
 ```bash
 cd frontend
-flutter pub get
-flutter run -d chrome  # 웹으로 실행
+npm install
+npm run dev  # http://localhost:3000
 ```
 
 ---
@@ -123,7 +123,7 @@ docker-compose down && docker-compose up -d
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
 │   Frontend   │────▶│   Backend    │────▶│   AI Server  │
-│  (Flutter)   │◀────│ (Spring Boot)│◀────│  (FastAPI)   │
+│  (Next.js)   │◀────│ (Spring Boot)│◀────│  (FastAPI)   │
 │  :3000       │     │  :8080       │     │  :8000       │
 └──────────────┘     └──────────────┘     └──────────────┘
                             │
@@ -267,6 +267,7 @@ docker exec -it aitrip-redis redis-cli ping
 
 ## 추가 문서
 
+- [배포 가이드](./DEPLOYMENT.md)
 - [Backend 개발 가이드](./backend/README.md)
 - [Frontend 개발 가이드](./frontend/README.md)
 - [AI 개발 가이드](./ai/README.md)
