@@ -7,9 +7,10 @@ AI 기반 여행 추천 서비스 모노레포입니다.
 ```
 aitrip/
 ├── backend/          # Spring Boot REST API
-├── frontend/         # Flutter 모바일/웹 앱
+├── frontend/         # Next.js 웹 앱
 ├── ai/               # FastAPI AI 추천 서비스
-├── docker-compose.yml
+├── docker-compose.yml       # 로컬 개발용
+├── docker-compose.prod.yml  # EC2 운영용
 └── README.md
 ```
 
@@ -18,7 +19,7 @@ aitrip/
 | 서비스 | 기술 | 포트 |
 |--------|------|------|
 | Backend | Spring Boot 3, Java 21 | 8080 |
-| Frontend | Flutter 3.5+ | - |
+| Frontend | Next.js, Node 20 | 3000 |
 | AI | FastAPI, Python 3.11 | 8000 |
 | Database | MySQL 8.0 | 3306 |
 | Cache | Redis 7 | 6379 |
@@ -29,7 +30,7 @@ aitrip/
 
 - Docker & Docker Compose
 - Java 21 (Backend 개발 시)
-- Flutter SDK 3.5+ (Frontend 개발 시)
+- Node.js 20+ (Frontend 개발 시)
 - Python 3.11+ (AI 개발 시)
 
 ### Docker로 전체 실행
@@ -49,8 +50,8 @@ cd backend
 **Frontend:**
 ```bash
 cd frontend
-flutter pub get
-flutter run
+npm install
+npm run dev
 ```
 
 **AI:**
@@ -65,11 +66,12 @@ uvicorn app.main:app --reload --port 8000
 - Backend: http://localhost:8080/swagger-ui.html
 - AI: http://localhost:8000/docs
 
-## 개발 가이드
+## 문서
 
-### [DEVELOPMENT.md](./DEVELOPMENT.md) - 필독!
-
-로컬 개발 환경 설정, Mock 데이터 사용법, 테스트 계정 등 팀원 공통 가이드입니다.
+| 문서 | 설명 |
+|------|------|
+| [DEVELOPMENT.md](./DEVELOPMENT.md) | 로컬 개발 환경 설정 (필독) |
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | AWS EC2 배포 가이드 |
 
 ### 서비스별 가이드
 

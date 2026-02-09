@@ -892,7 +892,7 @@ spring:
 ### 운영용 (src/main/resources/application-prod.yaml)
 
 ```yaml
-# EC2 실행: SPRING_PROFILES_ACTIVE=prod docker-compose up -d
+# EC2 실행: docker-compose -f docker-compose.prod.yml up -d
 
 spring:
   datasource:
