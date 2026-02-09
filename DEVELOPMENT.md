@@ -26,6 +26,42 @@
 | Python | 3.11+ | AI 개발 시 |
 | Node.js | 20+ | Frontend 개발 시 |
 
+### 설치 가이드
+
+**Docker Desktop (필수)**
+- Windows/Mac: https://www.docker.com/products/docker-desktop 에서 다운로드
+- 설치 후 Docker Desktop 실행 필요
+
+**Java 21 (Backend 개발자)**
+```bash
+# Windows (winget)
+winget install Microsoft.OpenJDK.21
+
+# Mac (Homebrew)
+brew install openjdk@21
+```
+- 또는 https://adoptium.net 에서 Temurin 21 다운로드
+
+**Python 3.11+ (AI 개발자)**
+```bash
+# Windows (winget)
+winget install Python.Python.3.11
+
+# Mac (Homebrew)
+brew install python@3.11
+```
+- 또는 https://www.python.org/downloads 에서 다운로드
+
+**Node.js 20+ (Frontend 개발자)**
+```bash
+# Windows (winget)
+winget install OpenJS.NodeJS.LTS
+
+# Mac (Homebrew)
+brew install node@20
+```
+- 또는 https://nodejs.org 에서 LTS 버전 다운로드
+
 ### Step 1: 저장소 클론
 
 ```bash
