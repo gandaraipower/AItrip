@@ -790,7 +790,7 @@ docker-compose up -d
 docker-compose down
 ```
 
-### 운영/개발용 (src/main/resources/application.yaml)
+### 공통 설정 (src/main/resources/application.yaml)
 
 ```yaml
 spring:
@@ -817,6 +817,22 @@ jwt:
   refresh-token-expiration: 604800000
 ```
 
+### 개발용 (src/main/resources/application-dev.yaml)
+
+```yaml
+# 실행: ./gradlew bootRun --args='--spring.profiles.active=dev'
+# BaseInitData가 자동으로 테스트 계정과 샘플 데이터를 생성합니다.
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create    # 서버 시작 시 테이블 재생성
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+```
+
 ### 테스트용 (src/test/resources/application.yaml)
 
 ```yaml
@@ -828,10 +844,6 @@ spring:
     driver-class-name: org.h2.Driver
     username: sa
     password:
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -851,7 +863,15 @@ jwt:
   refresh-token-expiration: 604800000
 ```
 
-### H2 예약어 주의
+### 환경별 요약
+
+| 환경 | DB | ddl-auto | 용도 |
+|------|-----|----------|------|
+| 기본 (application.yaml) | MySQL | update | 운영/공통 |
+| 개발 (application-dev.yaml) | MySQL | create | 개발 (BaseInitData 실행) |
+| 테스트 (test/application.yaml) | H2 | create-drop | 단위/통합 테스트 |
+
+### H2 예약어 주의 (테스트 환경)
 
 H2에서 `hour`, `year`, `month`, `day`, `time` 등은 예약어입니다. 엔티티 컬럼명으로 사용 시 반드시 `@Column(name = "crowd_hour")` 등으로 변경하세요.
 
