@@ -77,11 +77,14 @@ flutter run -d chrome  # 웹으로 실행
 
 ### Backend Mock 데이터
 
-Backend를 `dev` 프로파일로 실행하면 자동으로 Mock 데이터가 로드됩니다.
+Backend를 `dev` 프로파일로 실행하면 `BaseInitData`가 자동으로 Mock 데이터를 생성합니다.
 
 ```bash
 # Mock 데이터 포함 실행
 ./gradlew bootRun --args='--spring.profiles.active=dev'
+
+# Windows
+gradlew.bat bootRun --args='--spring.profiles.active=dev'
 
 # Mock 데이터 없이 실행 (빈 DB)
 ./gradlew bootRun
@@ -96,15 +99,28 @@ Backend를 `dev` 프로파일로 실행하면 자동으로 Mock 데이터가 로
 
 ### Mock 데이터 추가하기
 
-1. `backend/src/main/resources/data-dev.sql` 파일 수정
-2. INSERT 문 추가 (중복 방지를 위해 `ON DUPLICATE KEY UPDATE` 사용)
+1. `backend/.../global/init/BaseInitData.java` 파일 수정
+2. 새 메서드 추가 (예: `createNewPlaces()`)
 3. PR 생성하여 팀원과 공유
 
-```sql
--- 예시: 새 장소 추가
-INSERT INTO places (name, region, category, address, ...)
-VALUES ('새 장소', '서울', '관광명소', '주소...')
-ON DUPLICATE KEY UPDATE name = name;
+```java
+// 예시: 새 장소 추가
+private void createNewPlaces() {
+    placeRepository.save(Place.builder()
+            .name("새 장소")
+            .region("서울")
+            .category("관광명소")
+            .address("주소...")
+            .build());
+}
+```
+
+### 다른 팀원 변경사항 적용
+
+```bash
+git pull origin main
+# 서버 재시작하면 자동 적용 (H2 create-drop)
+./gradlew bootRun --args='--spring.profiles.active=dev'
 ```
 
 ---
@@ -230,7 +246,8 @@ netstat -ano | findstr :8080
 
 **Q: Mock 데이터가 안 들어가요**
 - `--spring.profiles.active=dev` 옵션 확인
-- `ddl-auto: create`라서 기존 데이터 삭제됨 (정상)
+- `ddl-auto: create-drop`이라 서버 재시작 시 데이터 초기화 (정상)
+- 로그에서 `개발용 Mock 데이터 초기화 완료` 메시지 확인
 
 **Q: Redis 연결 실패**
 ```bash

@@ -43,6 +43,8 @@ Spring Boot REST API 프로젝트의 공통 개발 규칙입니다.
 │   │   └── dto/
 │   │       ├── AiScheduleRequest.java
 │   │       └── AiScheduleResponse.java
+│   ├── init/
+│   │   └── BaseInitData.java        # @Profile("dev") 개발용 초기 데이터
 │   └── security/
 │       ├── jwt/
 │       │   ├── JwtTokenProvider.java
@@ -1026,27 +1028,25 @@ public enum ErrorCode {
 
 ---
 
-## 14. 개발 환경 Mock 데이터
+## 14. 개발 환경 Mock 데이터 (BaseInitData)
 
-팀원 간 동일한 테스트 데이터로 개발하기 위해 `data-dev.sql`을 사용합니다.
+팀원 간 동일한 테스트 데이터로 개발하기 위해 `BaseInitData`를 사용합니다.
 
-### 파일 위치
+### 패키지 구조
 
 ```
-src/main/resources/
-├── application.yaml        # 기본 설정
-├── application-dev.yaml    # 개발 환경 (Mock 데이터 로드)
-└── data-dev.sql            # Mock 데이터
+global/init/
+└── BaseInitData.java    # @Profile("dev") - 개발 환경에서만 실행
 ```
 
 ### 사용 방법
 
 ```bash
-# dev 프로파일로 실행 (Mock 데이터 포함)
+# dev 프로파일로 실행 (Mock 데이터 자동 생성)
 ./gradlew bootRun --args='--spring.profiles.active=dev'
 
-# 기본 실행 (Mock 데이터 없음)
-./gradlew bootRun
+# Windows
+gradlew.bat bootRun --args='--spring.profiles.active=dev'
 ```
 
 ### 테스트 계정
@@ -1057,11 +1057,61 @@ src/main/resources/
 | user1@test.com | Test1234! | ROLE_USER |
 | user2@test.com | Test1234! | ROLE_USER |
 
+### BaseInitData 구현 패턴
+
+```java
+@Slf4j
+@Component
+@Profile("dev")
+@RequiredArgsConstructor
+public class BaseInitData implements CommandLineRunner {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @Override
+    @Transactional
+    public void run(String... args) {
+        // 이미 데이터가 있으면 스킵
+        if (userRepository.count() > 0) {
+            log.info("데이터가 이미 존재합니다. 초기화를 건너뜁니다.");
+            return;
+        }
+
+        log.info("=== 개발용 Mock 데이터 초기화 시작 ===");
+        createUsers();
+        log.info("=== 개발용 Mock 데이터 초기화 완료 ===");
+    }
+
+    private void createUsers() {
+        String encodedPassword = passwordEncoder.encode("Test1234!");
+
+        userRepository.save(User.builder()
+                .email("user1@test.com")
+                .password(encodedPassword)
+                .name("테스트유저1")
+                .role(User.Role.ROLE_USER)
+                .build());
+
+        log.info("테스트 계정 생성 완료");
+    }
+}
+```
+
+### SQL 대비 장점
+
+| 항목 | data-dev.sql | BaseInitData |
+|------|--------------|--------------|
+| 엔티티 변경 시 | SQL 수동 수정 필요 | 컴파일 에러로 바로 감지 |
+| 연관관계 데이터 | FK 순서 직접 관리 | JPA가 자동 처리 |
+| 비밀번호 | 미리 인코딩된 값 하드코딩 | `passwordEncoder` 사용 |
+| IDE 지원 | 없음 | 리팩토링, 자동완성 지원 |
+
 ### Mock 데이터 추가 규칙
 
-1. `data-dev.sql`에 INSERT 문 추가
-2. `ON DUPLICATE KEY UPDATE` 사용하여 중복 방지
-3. PR로 팀원들과 공유
+1. `BaseInitData.java`에 메서드 추가 (예: `createPlaces()`)
+2. 새 엔티티 추가 시 해당 Repository 주입
+3. PR로 팀원들과 공유 → `git pull` + 서버 재시작으로 적용
 
 ---
 
