@@ -33,28 +33,36 @@ git clone <repository-url>
 cd aitrip
 ```
 
-### Step 2: 인프라 실행 (MySQL + Redis)
+### Step 2: 서버 실행
 
-**모든 팀원 공통** - 본인이 담당하는 서비스와 관계없이 실행해주세요.
+**방법 A: Docker Compose로 한 번에 실행 (추천)**
 
 ```bash
-docker-compose up -d mysql redis
+docker-compose up -d
+# MySQL + Redis + Backend 전부 실행
+# 기본값 dev 프로파일 적용
 ```
 
 확인:
 ```bash
 docker-compose ps
-# mysql, redis가 healthy 상태인지 확인
+# mysql, redis, backend가 healthy/running 상태인지 확인
 ```
 
-### Step 3: 담당 서비스 실행
+**방법 B: 인프라만 Docker, Backend는 직접 실행**
 
-**Backend (Spring Boot):**
 ```bash
+# 1. MySQL + Redis 실행
+docker-compose up -d mysql redis
+
+# 2. Backend 직접 실행 (코드 수정 시 편리)
 cd backend
 ./gradlew bootRun --args='--spring.profiles.active=dev'
 ```
-- API 문서: http://localhost:8080/swagger-ui.html
+
+### Step 3: 담당 서비스 실행 (Frontend/AI)
+
+> Backend는 Step 2에서 이미 실행됨. API 문서: http://localhost:8080/swagger-ui.html
 
 **AI (FastAPI):**
 ```bash
@@ -119,7 +127,7 @@ private void createNewPlaces() {
 
 ```bash
 git pull origin main
-# 서버 재시작하면 자동 적용 (H2 create-drop)
+# 서버 재시작하면 자동 적용 (MySQL create - 테이블 재생성)
 ./gradlew bootRun --args='--spring.profiles.active=dev'
 ```
 
@@ -246,7 +254,7 @@ netstat -ano | findstr :8080
 
 **Q: Mock 데이터가 안 들어가요**
 - `--spring.profiles.active=dev` 옵션 확인
-- `ddl-auto: create-drop`이라 서버 재시작 시 데이터 초기화 (정상)
+- `ddl-auto: create`라서 서버 시작 시 테이블 재생성됨 (정상)
 - 로그에서 `개발용 Mock 데이터 초기화 완료` 메시지 확인
 
 **Q: Redis 연결 실패**
