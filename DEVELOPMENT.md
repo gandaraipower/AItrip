@@ -81,24 +81,11 @@ flutter run -d chrome  # 웹으로 실행
 
 ---
 
-## 2. Mock 데이터 사용
+## 2. Mock 데이터
 
-### Backend Mock 데이터
+`docker-compose up -d` 실행하면 자동으로 Mock 데이터가 생성됩니다.
 
-Backend를 `dev` 프로파일로 실행하면 `BaseInitData`가 자동으로 Mock 데이터를 생성합니다.
-
-```bash
-# Mock 데이터 포함 실행
-./gradlew bootRun --args='--spring.profiles.active=dev'
-
-# Windows
-gradlew.bat bootRun --args='--spring.profiles.active=dev'
-
-# Mock 데이터 없이 실행 (빈 DB)
-./gradlew bootRun
-```
-
-### 포함된 Mock 데이터
+### 포함된 데이터
 
 | 데이터 | 내용 |
 |--------|------|
@@ -107,12 +94,10 @@ gradlew.bat bootRun --args='--spring.profiles.active=dev'
 
 ### Mock 데이터 추가하기
 
-1. `backend/.../global/init/BaseInitData.java` 파일 수정
-2. 새 메서드 추가 (예: `createNewPlaces()`)
-3. PR 생성하여 팀원과 공유
+1. `backend/.../global/init/BaseInitData.java` 수정
+2. PR 생성하여 팀원과 공유
 
 ```java
-// 예시: 새 장소 추가
 private void createNewPlaces() {
     placeRepository.save(Place.builder()
             .name("새 장소")
@@ -123,12 +108,12 @@ private void createNewPlaces() {
 }
 ```
 
-### 다른 팀원 변경사항 적용
+### 팀원 변경사항 적용
 
 ```bash
 git pull origin main
-# 서버 재시작하면 자동 적용 (MySQL create - 테이블 재생성)
-./gradlew bootRun --args='--spring.profiles.active=dev'
+docker-compose down && docker-compose up -d
+# 서버 재시작 시 테이블 재생성 + Mock 데이터 자동 생성
 ```
 
 ---
@@ -198,7 +183,7 @@ git pull origin main
 
 ## 5. 테스트 계정
 
-Backend `dev` 프로파일 실행 시 사용 가능한 계정입니다.
+`docker-compose up -d` 실행 후 사용 가능한 계정입니다.
 
 | 이메일 | 비밀번호 | 역할 | 용도 |
 |--------|----------|------|------|
@@ -253,9 +238,14 @@ netstat -ano | findstr :8080
 ### Backend 관련
 
 **Q: Mock 데이터가 안 들어가요**
-- `--spring.profiles.active=dev` 옵션 확인
-- `ddl-auto: create`라서 서버 시작 시 테이블 재생성됨 (정상)
-- 로그에서 `개발용 Mock 데이터 초기화 완료` 메시지 확인
+```bash
+# Backend 로그 확인
+docker-compose logs backend | grep "Mock 데이터"
+# "개발용 Mock 데이터 초기화 완료" 메시지가 있어야 함
+
+# 안 보이면 재시작
+docker-compose down && docker-compose up -d
+```
 
 **Q: Redis 연결 실패**
 ```bash
