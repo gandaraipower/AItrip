@@ -128,6 +128,8 @@ public class ApiResponse<T> {
 도메인별 접두사를 부여하여 에러 코드를 관리합니다. (예: Auth → A, User → U, Post → P 등)
 
 ```java
+@Getter
+@RequiredArgsConstructor
 public enum ErrorCode {
     // 인증 (A) - 공통으로 사용
     INVALID_TOKEN("A001", HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다."),
@@ -142,12 +144,14 @@ public enum ErrorCode {
     // 사용자 (U) - 공통으로 사용
     DUPLICATE_EMAIL("U001", HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
     USER_NOT_FOUND("U002", HttpStatus.NOT_FOUND, "존재하지 않는 사용자입니다."),
-    INVALID_PASSWORD("U003", HttpStatus.UNAUTHORIZED, "비밀번호가 일치하지 않습니다."),
+    INVALID_PASSWORD("U003", HttpStatus.UNAUTHORIZED, "비밀번호가 일치하지 않습니다.");
 
     // 비즈니스 도메인 - 프로젝트에 맞게 추가
     // NOT_FOUND_{DOMAIN}("{접두사}001", HttpStatus.NOT_FOUND, "존재하지 않는 {도메인}입니다."),
-    // UNAUTHORIZED_{DOMAIN}_ACCESS("{접두사}002", HttpStatus.FORBIDDEN, "해당 {도메인}에 대한 권한이 없습니다."),
-    // DUPLICATE_{DOMAIN}("{접두사}003", HttpStatus.CONFLICT, "이미 존재하는 {도메인}입니다.");
+
+    private final String code;
+    private final HttpStatus status;
+    private final String message;
 }
 ```
 
@@ -373,6 +377,58 @@ public class PostController {
 | PUT | `/api/{도메인}/{id}` | 수정 | 200 |
 | DELETE | `/api/{도메인}/{id}` | 삭제 | 200 |
 | PATCH | `/api/{도메인}/{id}/{필드}` | 부분 수정 | 200 |
+
+### 페이징 처리
+
+목록 조회 API는 `Pageable`을 사용하여 페이징 처리합니다.
+
+**컨트롤러:**
+```java
+@GetMapping("/api/posts")
+@Operation(summary = "게시글 목록 조회")
+public ResponseEntity<ApiResponse<Page<PostResponse>>> getPosts(
+        @AuthenticationPrincipal CustomUserDetails userDetails,
+        @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+    return ResponseEntity.status(HttpStatus.OK)
+            .body(ApiResponse.success(postService.getPosts(userDetails.getUserId(), pageable)));
+}
+```
+
+**서비스:**
+```java
+public Page<PostResponse> getPosts(Long userId, Pageable pageable) {
+    return postRepository.findByUserId(userId, pageable)
+            .map(PostResponse::from);
+}
+```
+
+**리포지토리:**
+```java
+public interface PostRepository extends JpaRepository<Post, Long> {
+    Page<Post> findByUserId(Long userId, Pageable pageable);
+}
+```
+
+**요청 예시:**
+```
+GET /api/posts?page=0&size=10&sort=createdAt,desc
+```
+
+**응답 형식:**
+```json
+{
+  "code": "200",
+  "message": "OK",
+  "data": {
+    "content": [...],
+    "pageable": { "pageNumber": 0, "pageSize": 10 },
+    "totalElements": 100,
+    "totalPages": 10,
+    "last": false,
+    "first": true
+  }
+}
+```
 
 ---
 
@@ -833,6 +889,20 @@ spring:
         format_sql: true
 ```
 
+### 운영용 (src/main/resources/application-prod.yaml)
+
+```yaml
+# EC2 실행: SPRING_PROFILES_ACTIVE=prod docker-compose up -d
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/aitrip}
+  jpa:
+    hibernate:
+      ddl-auto: validate  # 스키마 검증만, 자동 변경 안함
+    show-sql: false
+```
+
 ### 테스트용 (src/test/resources/application.yaml)
 
 ```yaml
@@ -1101,6 +1171,29 @@ public enum ErrorCode {
 2. **에러 핸들링**: AI 서버 장애 시 사용자에게 명확한 에러 메시지 반환
 3. **비동기 처리 고려**: 긴 작업은 `@Async` 또는 메시지 큐 사용 검토
 4. **재시도 정책**: 일시적 장애 대비 재시도 로직 추가 가능 (Resilience4j 등)
+5. **`.block()` 사용 주의**: 위 예시는 동기 호출 (`.block()`) 사용. MVP에서는 괜찮지만, 트래픽 증가 시 스레드 블로킹으로 성능 저하 가능. 필요시 비동기 (`Mono<T>` 반환) 전환 검토
+
+**비동기 전환 예시:**
+```java
+// 동기 (현재) - 스레드 블로킹
+public AiScheduleResponse requestSchedule(AiScheduleRequest request) {
+    return aiWebClient.post()
+            .uri("/api/schedule/generate")
+            .bodyValue(request)
+            .retrieve()
+            .bodyToMono(AiScheduleResponse.class)
+            .block();  // 스레드 블로킹
+}
+
+// 비동기 (확장 시) - 논블로킹
+public Mono<AiScheduleResponse> requestScheduleAsync(AiScheduleRequest request) {
+    return aiWebClient.post()
+            .uri("/api/schedule/generate")
+            .bodyValue(request)
+            .retrieve()
+            .bodyToMono(AiScheduleResponse.class);
+}
+```
 
 ---
 
