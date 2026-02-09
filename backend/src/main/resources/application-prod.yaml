@@ -1,0 +1,10 @@
+# 운영 환경 설정
+# EC2에서 실행: SPRING_PROFILES_ACTIVE=prod docker-compose up -d
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/aitrip}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
