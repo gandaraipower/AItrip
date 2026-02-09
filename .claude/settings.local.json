@@ -25,7 +25,10 @@
       "Bash(git mv:*)",
       "Bash(./gradlew build:*)",
       "Bash(timeout 60 bash:*)",
-      "Bash(flutter --version:*)"
+      "Bash(flutter --version:*)",
+      "Bash(git restore:*)",
+      "Bash(git rm:*)",
+      "Bash(ls:*)"
     ]
   },
   "hooks": {
