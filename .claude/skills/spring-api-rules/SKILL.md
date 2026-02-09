@@ -865,15 +865,71 @@ jwt:
 
 ### 환경별 요약
 
-| 환경 | DB | ddl-auto | 용도 |
-|------|-----|----------|------|
-| 기본 (application.yaml) | MySQL | update | 운영/공통 |
-| 개발 (application-dev.yaml) | MySQL | create | 개발 (BaseInitData 실행) |
-| 테스트 (test/application.yaml) | H2 | create-drop | 단위/통합 테스트 |
+| 환경 | DB | ddl-auto | BaseInitData | 용도 |
+|------|-----|----------|--------------|------|
+| 기본 (application.yaml) | MySQL | update | X | 공통 설정 |
+| 개발 (application-dev.yaml) | MySQL | create | O | 로컬 개발 |
+| 운영 (application-prod.yaml) | MySQL | validate | X | EC2 배포 |
+| 테스트 (test/application.yaml) | H2 | create-drop | X | 단위/통합 테스트 |
 
 ### H2 예약어 주의 (테스트 환경)
 
 H2에서 `hour`, `year`, `month`, `day`, `time` 등은 예약어입니다. 엔티티 컬럼명으로 사용 시 반드시 `@Column(name = "crowd_hour")` 등으로 변경하세요.
+
+### Docker Compose 환경 분기
+
+docker-compose.yml에서 환경변수로 프로파일을 분기합니다.
+
+```yaml
+backend:
+  environment:
+    SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}  # 기본값 dev
+```
+
+**로컬 실행:**
+```bash
+docker-compose up -d
+# 환경변수 없음 → 기본값 dev 적용
+```
+
+**EC2 실행:**
+```bash
+# .env 파일로 환경변수 설정
+docker-compose up -d
+# .env 읽어서 prod 적용
+```
+
+### EC2 배포 설정
+
+EC2에 `.env` 파일을 생성하여 운영 환경변수를 관리합니다.
+
+```bash
+# EC2 서버에서 최초 1회 설정
+cat > .env << 'EOF'
+SPRING_PROFILES_ACTIVE=prod
+JWT_SECRET=운영용-32자이상-시크릿키-여기에-실제값
+DB_USERNAME=root
+DB_PASSWORD=운영DB비밀번호
+EOF
+
+# 이후 배포
+docker-compose up -d
+```
+
+**주의:** `.env` 파일은 민감한 정보를 포함하므로 **Git에 절대 커밋하지 않습니다.**
+
+```gitignore
+# .gitignore
+.env
+```
+
+### 배포 방법 비교
+
+| 방법 | 복잡도 | 보안 | 추천 시점 |
+|------|--------|------|----------|
+| EC2에 .env 직접 생성 | 쉬움 | 보통 | MVP, 초기 개발 |
+| GitHub Secrets + Actions | 중간 | 높음 | CI/CD 구축 시 |
+| AWS Secrets Manager | 복잡 | 높음 | 규모 확장 시 |
 
 ---
 
