@@ -31,6 +31,6 @@ public class ApiResponse<T> {
     }
 
     public static <T> ApiResponse<T> error(ErrorCode code) {
-        return new ApiResponse<>(String.valueOf(code.getStatus().value()), code.getMessage(), null);
+        return new ApiResponse<>(code.getCode(), code.getMessage(), null);
     }
 }
